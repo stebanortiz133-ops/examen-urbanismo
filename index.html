@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microanálisis Urbano: Parque San Sebastián</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'clay': '#C05621',       /* Ladrillo */
+                        'clay-dark': '#9C4221',
+                        'stone-bg': '#FDFBF7',   /* Papel/Hueso */
+                        'slate-dark': '#2D3748', /* Gris Oscuro */
+                        'sand': '#E2E8F0',
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        serif: ['"Playfair Display"', 'serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 10px 40px -10px rgba(0,0,0,0.08)',
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #FDFBF7; color: #2D3748; overflow-x: hidden; }
+        
+        /* Animaciones */
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-enter { animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* Navegación */
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .nav-btn {
+            padding: 0.5rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .nav-btn.active {
+            background-color: #2D3748;
+            color: white;
+            box-shadow: 0 4px 12px rgba(45, 55, 72, 0.2);
+        }
+        .nav-btn:not(.active):hover {
+            background-color: #EDF2F7;
+            color: #C05621;
+        }
+
+        /* Placeholders de Imagen */
+        .img-placeholder {
+            background-color: #F7FAFC;
+            border: 1px dashed #CBD5E0;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .img-placeholder:hover {
+            border-color: #C05621;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+        /* Icono de Lupa al hacer hover */
+        .img-placeholder::after {
+            content: '🔍 Ampliar';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 20;
+        }
+        .img-placeholder:hover::after {
+            opacity: 1;
+        }
+
+        .img-content {
+            width: 100%; height: 100%; object-fit: cover;
+            transition: transform 0.7s ease;
+            cursor: zoom-in; /* Cursor de lupa */
+        }
+        .img-placeholder:hover .img-content { transform: scale(1.02); }
+
+        /* Etiquetas */
+        .img-label {
+            position: absolute;
+            bottom: 0.5rem; left: 0.5rem;
+            background: rgba(255,255,255,0.9);
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #C05621;
+            backdrop-filter: blur(4px);
+            z-index: 10;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Navegación -->
+    <nav class="sticky top-0 z-50 glass-nav w-full">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-clay to-clay-dark rounded-lg flex items-center justify-center text-white font-serif font-bold text-xl shadow-lg">S</div>
+                <div>
+                    <h1 class="font-serif font-bold text-xl leading-none text-slate-dark">San Sebastián</h1>
+                    <p class="text-xs text-gray-500 font-sans tracking-wide mt-1">MICROANÁLISIS URBANO</p>
+                </div>
+            </div>
+            <div class="flex gap-2 bg-gray-100 p-1.5 rounded-full">
+                <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-btn active text-sm">Dashboard</button>
+                <button onclick="switchTab('detailed')" id="btn-detailed" class="nav-btn text-sm text-gray-500">Detalle Completo</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto px-6 py-8 w-full">
+
+        <!-- ======================================================= -->
+        <!-- VISTA 1: DASHBOARD (Resumen Ejecutivo)                  -->
+        <!-- ======================================================= -->
+        <div id="view-dashboard" class="space-y-12 animate-enter">
+            
+            <!-- KPIs -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-card border border-gray-100 group">
+                    <span class="text-3xl mb-3 block">🧱</span>
+                    <h3 class="font-bold text-slate-dark text-lg">Identidad Material</h3>
+                    <p class="text-gray-500 text-sm mt-2">Memoria de arcilla y hornos.</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-card border border-gray-100 group">
+                    <span class="text-3xl mb-3 block">⚠️</span>
+                    <h3 class="font-bold text-slate-dark text-lg">Gentrificación</h3>
+                    <p class="text-gray-500 text-sm mt-2">Desplazamiento residencial.</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-card border border-gray-100 group">
+                    <span class="text-3xl mb-3 block">💡</span>
+                    <h3 class="font-bold text-slate-dark text-lg">Potencial</h3>
+                    <p class="text-gray-500 text-sm mt-2">Activación cultural (MMAM).</p>
+                </div>
+            </section>
+
+            <!-- ======================================================= -->
+            <!-- SECCIÓN LYNCH: 5 ELEMENTOS VISIBLES (NO OCULTOS)        -->
+            <!-- ======================================================= -->
+            <section class="space-y-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <h2 class="font-serif text-2xl font-bold text-slate-dark">Imagen Urbana (Lynch)</h2>
+                    <div class="h-px bg-gray-200 flex-grow"></div>
+                </div>
+
+                <!-- 1. SENDAS -->
+                <div class="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex flex-col md:flex-row gap-8 items-center">
+                    <div class="md:w-1/2">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">1</span>
+                            <h3 class="font-bold text-xl text-slate-dark">Sendas (Caminos)</h3>
+                        </div>
+                        <p class="text-gray-600 text-justify leading-relaxed">
+                            Las calles <strong>Simón Bolívar</strong> y <strong>Sucre</strong> son los canales de circulación predominantes. Conectan el parque con el Centro Histórico, actuando como corredores vehiculares intensos que a menudo fragmentan el flujo peatonal transversal.
+                        </p>
+                    </div>
+                    <div class="md:w-1/2 w-full h-64 img-placeholder">
+                        <!-- 🔴 IMAGEN SENDAS -->
+                        <img src="https://i.imgur.com/4Fq54iF.png" class="img-content" onclick="expandImage(this)">
+                        <div class="img-label">SENDAS</div>
+                    </div>
+                </div>
+
+                <!-- 2. BORDES -->
+                <div class="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex flex-col md:flex-row gap-8 items-center">
+                    <div class="md:w-1/2">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-sm">2</span>
+                            <h3 class="font-bold text-xl text-slate-dark">Bordes (Límites)</h3>
+                        </div>
+                        <p class="text-gray-600 text-justify leading-relaxed">
+                            El parque está delimitado por un <strong>borde edificado continuo</strong> de fachadas coloniales y republicanas. No es un muro ciego, sino una piel permeable con portales que define claramente la geometría de la plaza.
+                        </p>
+                    </div>
+                    <div class="md:w-1/2 w-full h-64 img-placeholder">
+                        <!-- 🔴 IMAGEN BORDES -->
+                        <img src="https://i.imgur.com/5CcRHGQ.png" class="img-content" onclick="expandImage(this)">
+                        <div class="img-label">BORDES</div>
+                    </div>
+                </div>
+
+                <!-- 3. BARRIO -->
+                <div class="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex flex-col md:flex-row gap-8 items-center">
+                    <div class="md:w-1/2">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center font-bold text-sm">3</span>
+                            <h3 class="font-bold text-xl text-slate-dark">Barrio (Identidad)</h3>
+                        </div>
+                        <p class="text-gray-600 text-justify leading-relaxed">
+                            San Sebastián tiene carácter de <strong>distrito tradicional</strong>. Se percibe como una zona de transición, bohemia y artesanal, diferenciada del ajetreo comercial del centro, con una fuerte memoria ligada a la arcilla.
+                        </p>
+                    </div>
+                    <div class="md:w-1/2 w-full h-64 img-placeholder">
+                        <!-- 🔴 IMAGEN BARRIO -->
+                        <img src="https://i.imgur.com/MO57j53.jpeg" class="img-content" onclick="expandImage(this)">
+                        <div class="img-label">BARRIO</div>
+                    </div>
+                </div>
+
+                <!-- 4. NODOS -->
+                <div class="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex flex-col md:flex-row gap-8 items-center">
+                    <div class="md:w-1/2">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="w-8 h-8 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center font-bold text-sm">4</span>
+                            <h3 class="font-bold text-xl text-slate-dark">Nodos (Concentración)</h3>
+                        </div>
+                        <p class="text-gray-600 text-justify leading-relaxed">
+                            El <strong>Parque</strong> es el nodo principal, punto de convergencia y pausa. Un nodo secundario es la plazoleta frente al Museo de Arte Moderno, activada durante eventos culturales.
+                        </p>
+                    </div>
+                    <div class="md:w-1/2 w-full h-64 img-placeholder">
+                        <!-- 🔴 IMAGEN NODOS -->
+                        <img src="https://via.placeholder.com/600x400/EDF2F7/A0AEC0?text=FOTO+NODOS+(Plaza/Parque)" class="img-content" onclick="expandImage(this)">
+                        <div class="img-label">NODOS</div>
+                    </div>
+                </div>
+
+                <!-- 5. HITOS -->
+                <div class="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex flex-col md:flex-row gap-8 items-center">
+                    <div class="md:w-1/2">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold text-sm">5</span>
+                            <h3 class="font-bold text-xl text-slate-dark">Hitos (Referencias)</h3>
+                        </div>
+                        <p class="text-gray-600 text-justify leading-relaxed">
+                            La <strong>Iglesia de San Sebastián</strong> (vertical) y el <strong>Museo de Arte Moderno</strong> (horizontal) son los puntos de referencia ineludibles que orientan al usuario y jerarquizan el espacio.
+                        </p>
+                    </div>
+                    <div class="md:w-1/2 w-full h-64 img-placeholder">
+                        <!-- 🔴 IMAGEN HITOS -->
+                        <img src="https://i.imgur.com/ACbBT2F.jpeg" class="img-content" onclick="expandImage(this)">
+                        <div class="img-label">HITOS</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Gráficos -->
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-gray-200">
+                <div class="bg-white p-8 rounded-3xl shadow-card border border-gray-100">
+                    <h3 class="font-serif font-bold text-xl mb-6 text-slate-dark">Uso de Suelo</h3>
+                    <div class="h-[250px]"><canvas id="usesChart"></canvas></div>
+                </div>
+                <div class="bg-white p-8 rounded-3xl shadow-card border border-gray-100">
+                    <h3 class="font-serif font-bold text-xl mb-6 text-slate-dark">Flujos: Día vs Noche</h3>
+                    <div class="h-[250px]"><canvas id="flowChart"></canvas></div>
+                </div>
+            </section>
+        </div>
+
+
+        <!-- ======================================================= -->
+        <!-- VISTA 2: DETALLE COMPLETO (ANÁLISIS PROFUNDO)           -->
+        <!-- ======================================================= -->
+        <div id="view-detailed" class="hidden animate-enter mt-4 pb-20">
+            <header class="mb-12 text-center">
+                <h2 class="text-4xl font-serif font-bold text-slate-dark">Análisis Urbano Profundo</h2>
+                <p class="text-gray-500 mt-2">Desglose de Usos, Flujos, Entorno y Diagnóstico. <br><span class="text-clay text-sm font-semibold">(Clic en las imágenes para ampliar)</span></p>
+            </header>
+
+            <!-- USOS -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16 border-b border-gray-200 pb-12">
+                <div class="h-80 img-placeholder">
+                    <!-- 🔴 IMAGEN USOS -->
+                    <img src="https://i.imgur.com/U6X45Lu.jpeg" class="img-content" onclick="expandImage(this)">
+                    <div class="img-label">USOS DE SUELO</div>
+                </div>
+                <div>
+                    <h3 class="text-3xl font-serif font-bold text-slate-dark mb-4">Usos y Actividades</h3>
+                    <p class="text-gray-600 leading-relaxed text-justify mb-4">
+                        El análisis funcional revela una <strong>turistificación</strong> agresiva. La planta baja es comercial (restaurantes, diseño), mientras que las plantas altas se vacían o convierten en Airbnb.
+                    </p>
+                    <div class="bg-orange-50 p-4 border-l-4 border-clay text-sm italic text-slate-700">
+                        "Falta de apropiación: El parque se usa para transitar, no para habitar."
+                    </div>
+                </div>
+            </section>
+
+            <!-- FLUJOS -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16 border-b border-gray-200 pb-12">
+                <div>
+                    <h3 class="text-3xl font-serif font-bold text-slate-dark mb-4">Flujos Urbanos</h3>
+                    <p class="text-gray-600 leading-relaxed text-justify mb-4">
+                        Ritmos marcados por la función laboral y escolar.
+                    </p>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3"><span class="w-2 h-2 rounded-full bg-slate-dark"></span><strong>Día:</strong> Tránsito rápido, dominio vehicular.</li>
+                        <li class="flex items-center gap-3"><span class="w-2 h-2 rounded-full bg-slate-dark"></span><strong>Noche:</strong> Desolación peatonal pasadas las 19:00. Inseguridad.</li>
+                    </ul>
+                </div>
+                <div class="h-80 img-placeholder">
+                    <!-- 🔴 IMAGEN FLUJOS -->
+                    <img src="https://i.imgur.com/josBKHF.png" class="img-content" onclick="expandImage(this)">
+                    <div class="img-label">DIAGRAMA FLUJOS</div>
+                </div>
+            </section>
+
+            <!-- ENTORNO -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16 border-b border-gray-200 pb-12">
+                <div class="h-80 img-placeholder">
+                    <!-- 🔴 IMAGEN ENTORNO -->
+                    <img src="https://via.placeholder.com/800x600/EDF2F7/A0AEC0?text=Foto+Entorno" class="img-content" onclick="expandImage(this)">
+                    <div class="img-label">ENTORNO CONSTRUIDO</div>
+                </div>
+                <div>
+                    <h3 class="text-3xl font-serif font-bold text-slate-dark mb-4">Entorno Construido</h3>
+                    <p class="text-gray-600 leading-relaxed text-justify">
+                        El barrio se asienta sobre la memoria de la <strong>arcilla</strong>. La arquitectura vernácula usa ladrillo visto, adobe y teja. La escala de dos plantas permite que la iglesia domine el perfil urbano.
+                    </p>
+                </div>
+            </section>
+
+            <!-- DIAGNOSTICO -->
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-8 rounded-3xl border border-red-100 shadow-card">
+                    <h3 class="font-bold text-xl text-red-800 mb-4">🚫 Problemáticas</h3>
+                    <ul class="list-disc pl-5 space-y-2 text-gray-600">
+                        <li>Gentrificación y desplazamiento vecinal.</li>
+                        <li>Inseguridad nocturna (Puntos ciegos).</li>
+                        <li>Falta de mobiliario de estancia.</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-8 rounded-3xl border border-green-100 shadow-card">
+                    <h3 class="font-bold text-xl text-green-800 mb-4">💡 Potencialidades</h3>
+                    <ul class="list-disc pl-5 space-y-2 text-gray-600">
+                        <li>Sacar el Museo (MMAM) a la plaza.</li>
+                        <li>Turismo de identidad (Arcilla/Oficios).</li>
+                        <li>Uso flexible de la plaza (Cine/Mercados).</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- MODAL DE VISUALIZACIÓN (LIGHTBOX) -->
+    <div id="image-modal" class="fixed inset-0 z-[100] bg-black/95 hidden flex items-center justify-center p-4 backdrop-blur-md opacity-0 transition-opacity duration-300" onclick="closeModal()">
+        <button class="absolute top-6 right-6 text-white/70 hover:text-white text-5xl font-light transition-colors z-[101]">&times;</button>
+        <div class="relative max-w-7xl max-h-[90vh] flex flex-col items-center">
+            <img id="modal-img" src="" class="max-w-full max-h-[85vh] object-contain rounded-md shadow-2xl transform transition-transform duration-300 scale-95">
+            <p id="modal-caption" class="text-white/80 text-center mt-4 font-serif text-lg tracking-wide"></p>
+        </div>
+    </div>
+
+    <script>
+        // --- NAVEGACIÓN ---
+        function switchTab(tabName) {
+            const dash = document.getElementById('view-dashboard');
+            const detail = document.getElementById('view-detailed');
+            const btnDash = document.getElementById('btn-dashboard');
+            const btnDetail = document.getElementById('btn-detailed');
+
+            if (tabName === 'dashboard') {
+                dash.classList.remove('hidden');
+                detail.classList.add('hidden');
+                btnDash.classList.add('active');
+                btnDash.classList.remove('text-gray-500');
+                btnDetail.classList.remove('active');
+                btnDetail.classList.add('text-gray-500');
+            } else {
+                dash.classList.add('hidden');
+                detail.classList.remove('hidden');
+                btnDetail.classList.add('active');
+                btnDetail.classList.remove('text-gray-500');
+                btnDash.classList.remove('active');
+                btnDash.classList.add('text-gray-500');
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            }
+        }
+
+        // --- LÓGICA DE VISUALIZACIÓN (LIGHTBOX) ---
+        function expandImage(imgElement) {
+            const modal = document.getElementById('image-modal');
+            const modalImg = document.getElementById('modal-img');
+            const modalCaption = document.getElementById('modal-caption');
+            
+            // Buscar el texto de la etiqueta asociada (.img-label o .fig-desc)
+            let captionText = "Vista Detallada";
+            const parent = imgElement.parentElement;
+            const label = parent.querySelector('.img-label') || parent.querySelector('.fig-desc');
+            if (label) captionText = label.innerText;
+
+            modalImg.src = imgElement.src;
+            modalCaption.innerText = captionText;
+            
+            modal.classList.remove('hidden');
+            // Timeout pequeño para permitir que la transición de opacidad funcione
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalImg.classList.remove('scale-95');
+                modalImg.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('image-modal');
+            const modalImg = document.getElementById('modal-img');
+            
+            modal.classList.add('opacity-0');
+            modalImg.classList.remove('scale-100');
+            modalImg.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // --- GRÁFICOS ---
+        function initCharts() {
+            Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+            Chart.defaults.color = '#718096';
+            
+            const ctxUse = document.getElementById('usesChart');
+            if(ctxUse) {
+                new Chart(ctxUse.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Comercial', 'Residencial', 'Institucional', 'Vacío'],
+                        datasets: [{ 
+                            data: [50, 20, 20, 10], 
+                            backgroundColor: ['#C05621', '#E2E8F0', '#48BB78', '#F7FAFC'], 
+                            borderWidth: 0 
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } }
+                });
+            }
+            
+            const ctxFlow = document.getElementById('flowChart');
+            if(ctxFlow) {
+                new Chart(ctxFlow.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mañana', 'Tarde', 'Noche'],
+                        datasets: [
+                            { label: 'Peatonal', data: [65, 85, 20], backgroundColor: '#48BB78', borderRadius: 4 },
+                            { label: 'Vehicular', data: [85, 90, 50], backgroundColor: '#CBD5E0', borderRadius: 4 }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } }
+                });
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => { initCharts(); });
+    </script>
+</body>
+</html>
